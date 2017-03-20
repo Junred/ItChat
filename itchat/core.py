@@ -5,7 +5,11 @@ import requests
 from . import config, storage, utils, log
 from .components import load_components
 
+
 class Core(object):
+
+    RELOAD_FILE_PREFIX = 'itchat.pkl'
+
     def __init__(self):
         ''' init is the only method defined in core.py
             alive is value showing whether core is running
@@ -26,9 +30,12 @@ class Core(object):
         self.loginInfo = {}
         self.s = requests.Session()
         self.uuid = None
-        self.functionDict = {'FriendChat': {}, 'GroupChat': {}, 'MpChat': {}}
-        self.useHotReload, self.hotReloadDir = False, 'itchat.pkl'
+        self.functionDict = {'FriendChat': {}, 'GroupChat': {}, 'MpChat': {}, 'Schedule': {}}
         self.receivingRetryCount = 5
+        self.useHotReload, self.hotReloadDir = False, self.RELOAD_FILE_PREFIX
+
+        self.wx_init = False
+
     def login(self, enableCmdQR=False, picDir=None, qrCallback=None,
             loginCallback=None, exitCallback=None):
         ''' log in like web wechat does
@@ -142,6 +149,14 @@ class Core(object):
             it is defined in components/login.py
         '''
         raise NotImplementedError()
+
+    def batch_contacts(self):
+        ''' batch_contacts
+
+            it is defined int components/contact.py
+        '''
+        raise NotImplementedError()
+
     def update_chatroom(self, userName, detailedMember=False):
         ''' update chatroom
             for chatroom contact
@@ -433,7 +448,7 @@ class Core(object):
             return a specific decorator based on information given
         '''
         raise NotImplementedError()
-    def run(self, debug=True, blockThread=True):
+    def run(self, debug=True, blockThread=True, schedule=None):
         ''' start auto respond
             for option
                 - debug: if set, debug info will be shown on screen

@@ -190,7 +190,8 @@ def web_init(self):
     self.storageClass.userName = dic['User']['UserName']
     self.storageClass.nickName = dic['User']['NickName']
     # deal with contact list returned when init
-    contactList = dic.get('ContactList', [])		
+    contactList = dic.get('ContactList', [])
+    logging.debug(contactList)
     chatroomList, otherList = [], []		
     for m in contactList:		
         if m['Sex'] != 0:		
@@ -205,6 +206,23 @@ def web_init(self):
         update_local_chatrooms(self, chatroomList)		
     if otherList:
         update_local_friends(self, otherList)
+
+    # TODO deal with ChatSet
+    chat_set = dic.get('ChatSet', None)
+    if chat_set:
+        chat_list = []
+        friend_list = []
+        for name in chat_set.split(','):
+            if '@@' in name:
+                chat_list.append(name)
+            elif '@' in name:
+                friend_list.append(name)
+
+        if len(chat_list) > 0:
+            self.update_chatroom(chat_list)
+        if len(friend_list) > 0:
+            self.update_friend(friend_list)
+
     return dic
 
 def show_mobile_login(self):
@@ -257,6 +275,7 @@ def start_receiving(self, exitCallback=None, getReceivingFnOnly=False):
                     self.alive = False
                 else:
                     time.sleep(1)
+
         self.logout()
         if hasattr(exitCallback, '__call__'):
             exitCallback()

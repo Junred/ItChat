@@ -164,6 +164,7 @@ def produce_msg(core, msgList):
                     'Text': m['FileName'], }
         elif m['MsgType'] == 51: # phone init
             msg = update_local_uin(core, m)
+            core.wx_init = True
         elif m['MsgType'] == 10000:
             msg = {
                 'Type': 'Note',
@@ -316,7 +317,11 @@ def send_file(self, fileDir, toUserName=None, mediaId=None):
         if r:
             mediaId = r['MediaId']
         else:
+            logging.error('upload image failed {0}'.format(fileDir))
             return r
+
+    logger.debug('Request to send a file(mediaId: %s) to %s: %s' % (
+        mediaId, toUserName, fileDir))
     url = '%s/webwxsendappmsg?fun=async&f=json' % self.loginInfo['url']
     data = {
         'BaseRequest': self.loginInfo['BaseRequest'],
@@ -344,6 +349,7 @@ def send_image(self, fileDir, toUserName=None, mediaId=None):
     if toUserName is None: toUserName = self.storageClass.userName
     if mediaId is None:
         r = self.upload_file(fileDir, isPicture=not fileDir[-4:] == '.gif')
+        logging.debug(r)
         if r:
             mediaId = r['MediaId']
         else:

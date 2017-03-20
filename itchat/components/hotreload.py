@@ -33,6 +33,7 @@ def dump_login_status(self, fileDir=None):
 
 def load_login_status(self, fileDir,
         loginCallback=None, exitCallback=None):
+    fileDir = fileDir or self.hotReloadDir
     try:
         with open(fileDir, 'rb') as f:
             j = pickle.load(f)

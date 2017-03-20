@@ -11,6 +11,7 @@ from ..storage import contact_change
 logger = logging.getLogger('itchat')
 
 def load_contact(core):
+    core.batch_contacts              = batch_contacts
     core.update_chatroom             = update_chatroom
     core.update_friend               = update_friend
     core.get_contact                 = get_contact
@@ -26,22 +27,45 @@ def load_contact(core):
     core.delete_member_from_chatroom = delete_member_from_chatroom
     core.add_member_into_chatroom    = add_member_into_chatroom
 
-def update_chatroom(self, userName, detailedMember=False):
-    if not isinstance(userName, list):
-        userName = [userName]
+
+def batch_contacts(self, userNames):
     url = '%s/webwxbatchgetcontact?type=ex&r=%s' % (
         self.loginInfo['url'], int(time.time()))
     headers = {
         'ContentType': 'application/json; charset=UTF-8',
-        'User-Agent' : config.USER_AGENT }
+        'User-Agent': config.USER_AGENT}
     data = {
         'BaseRequest': self.loginInfo['BaseRequest'],
-        'Count': len(userName),
+        'Count': len(userNames),
         'List': [{
-            'UserName': u,
-            'ChatRoomId': '', } for u in userName], }
+                     'UserName': u,
+                     'ChatRoomId': '',} for u in userNames],}
     chatroomList = json.loads(self.s.post(url, data=json.dumps(data), headers=headers
-            ).content.decode('utf8', 'replace')).get('ContactList')
+                                          ).content.decode('utf8', 'replace')).get('ContactList')
+    # if not chatroomList:
+    #     return ReturnValue({'BaseResponse': {
+    #         'ErrMsg': 'No chatroom found',
+    #         'Ret': -1001,}})
+
+    return chatroomList
+
+
+def update_chatroom(self, userName, detailedMember=False):
+    if not isinstance(userName, list):
+        userName = [userName]
+
+    offset = 0
+    batch_count = 50
+    l = len(userName)
+    chatroomList = []
+    while offset < l:
+        names = userName[offset:offset+batch_count]
+        offset += batch_count
+        contact_list = self.batch_contacts(names)
+        if not isinstance(contact_list, list):
+            break
+        chatroomList += contact_list
+
     if not chatroomList:
         return ReturnValue({'BaseResponse': {
                 'ErrMsg': 'No chatroom found',
@@ -76,22 +100,35 @@ def update_chatroom(self, userName, detailedMember=False):
         for c in chatroomList]
     return r if 1 < len(r) else r[0]
 
+
 def update_friend(self, userName):
     if not isinstance(userName, list):
         userName = [userName]
-    url = '%s/webwxbatchgetcontact?type=ex&r=%s' % (
-        self.loginInfo['url'], int(time.time()))
-    headers = {
-        'ContentType': 'application/json; charset=UTF-8',
-        'User-Agent' : config.USER_AGENT }
-    data = {
-        'BaseRequest': self.loginInfo['BaseRequest'],
-        'Count': len(userName),
-        'List': [{
-            'UserName': u,
-            'EncryChatRoomId': '', } for u in userName], }
-    friendList = json.loads(self.s.post(url, data=json.dumps(data), headers=headers
-            ).content.decode('utf8', 'replace')).get('ContactList')
+    # url = '%s/webwxbatchgetcontact?type=ex&r=%s' % (
+    #     self.loginInfo['url'], int(time.time()))
+    # headers = {
+    #     'ContentType': 'application/json; charset=UTF-8',
+    #     'User-Agent' : config.USER_AGENT }
+    # data = {
+    #     'BaseRequest': self.loginInfo['BaseRequest'],
+    #     'Count': len(userName),
+    #     'List': [{
+    #         'UserName': u,
+    #         'EncryChatRoomId': '', } for u in userName], }
+    # friendList = json.loads(self.s.post(url, data=json.dumps(data), headers=headers
+    #         ).content.decode('utf8', 'replace')).get('ContactList')
+
+    offset = 0
+    batch_count = 50
+    l = len(userName)
+    friendList = []
+    while offset < l:
+        names = userName[offset:offset + batch_count]
+        offset += batch_count
+        contact_list = self.batch_contacts(names)
+        if not isinstance(contact_list, list):
+            break
+        friendList += contact_list
 
     update_local_friends(self, friendList)
     r = [self.storageClass.search_friends(userName=f['UserName'])
@@ -206,9 +243,32 @@ def update_local_uin(core, msg):
         'Type': 'System',
         'Text': usernameChangedList,
         'SystemInfo': 'uins', }
+    usernames = []
+    if len(msg['StatusNotifyUserName']) > 0:
+        usernames = msg['StatusNotifyUserName'].split(',')
+        # 批量获取列表
+        chat_names = []
+        friend_names = []
+        for name in usernames:
+            if '@@' in name:
+                chat_names.append(name)
+            elif '@' in name:
+                friend_names.append(name)
+        core.storageClass.updateLock.release()
+        if len(chat_names) > 0:
+            logger.debug('get chatrooms')
+            # logger.debug(chat_names)
+            core.update_chatroom(chat_names)
+        if len(friend_names) > 0:
+            logger.debug('get friends')
+            # logger.debug(friend_names)
+            core.update_friend(friend_names)
+        core.storageClass.updateLock.acquire()
+
     if uins:
         uins = uins.group(1).split(',')
-        usernames = msg['StatusNotifyUserName'].split(',')
+        # logger.debug(uins)
+        # usernames = msg['StatusNotifyUserName'].split(',')
         if 0 < len(uins) == len(usernames):
             for uin, username in zip(uins, usernames):
                 if not '@' in username: continue
@@ -252,7 +312,7 @@ def update_local_uin(core, msg):
                         else:
                             newFriendDict['Uin'] = uin
                     usernameChangedList.append(username)
-                    logger.debug('Uin fetched: %s, %s' % (username, uin))
+                    logger.debug('Uin fetched else: %s, %s' % (username, uin))
         else:
             logger.debug('Wrong length of uins & usernames: %s, %s' % (
                 len(uins), len(usernames)))

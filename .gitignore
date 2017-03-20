@@ -8,3 +8,7 @@ test.py
 itchat.pkl
 QR.jpg
 .DS_Store
+.idea
+venv
+QR.png
+*.pkl

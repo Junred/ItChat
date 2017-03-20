@@ -29,6 +29,7 @@ start_receiving             = originInstance.start_receiving
 get_msg                     = originInstance.get_msg
 logout                      = originInstance.logout
 # components.contact
+batch_contacts              = originInstance.batch_contacts
 update_chatroom             = originInstance.update_chatroom
 update_friend               = originInstance.update_friend
 get_contact                 = originInstance.get_contact
