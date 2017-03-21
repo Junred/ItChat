@@ -335,7 +335,7 @@ def get_contact(self, update=False):
         except:
             logger.info('Failed to fetch contact, that may because of the amount of your chatrooms')
             for chatroom in self.get_chatrooms():
-                self.update_chatroom(chatroom['UserName'], detailedMember=True)
+                self.update_chatroom(chatroom['UserName'], detailedMember=False)
             return 0, []
         j = json.loads(r.content.decode('utf-8', 'replace'))
         return j.get('Seq', 0), j.get('MemberList')

@@ -12,3 +12,5 @@ QR.jpg
 venv
 QR.png
 *.pkl
+multi_group_send.py
+groupsend
