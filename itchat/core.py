@@ -57,6 +57,7 @@ class Core(object):
         self.useHotReload, self.hotReloadDir = False, self.RELOAD_FILE_PREFIX
 
         self.wx_init = False
+        self.init_message_func = None
 
     def login(self, enableCmdQR=False, picDir=None, qrCallback=None,
             loginCallback=None, exitCallback=None):
@@ -427,7 +428,7 @@ class Core(object):
         raise NotImplementedError()
     def auto_login(self, hotReload=False, statusStorageDir='itchat.pkl',
             enableCmdQR=False, picDir=None, qrCallback=None,
-            loginCallback=None, exitCallback=None):
+            loginCallback=None, exitCallback=None, initCallback=None):
         ''' log in like web wechat does
             for log in
                 - a QR code will be downloaded and opened
@@ -470,7 +471,7 @@ class Core(object):
             return a specific decorator based on information given
         '''
         raise NotImplementedError()
-    def run(self, debug=True, blockThread=True, schedule=None):
+    def run(self, debug=True, blockThread=True, schedule=None, init_message=None):
         ''' start auto respond
             for option
                 - debug: if set, debug info will be shown on screen

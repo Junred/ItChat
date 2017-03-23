@@ -173,6 +173,8 @@ def produce_msg(core, msgList):
         elif m['MsgType'] == 51: # phone init
             msg = update_local_uin(core, m)
             core.wx_init = True
+            if hasattr(core.init_message_func, '__call__'):
+                core.init_message_func()
         elif m['MsgType'] == 10000:
             msg = {
                 'Type': 'Note',

@@ -15,18 +15,25 @@ def load_register(core):
     core.msg_register     = msg_register
     core.run              = run
 
+
 def auto_login(self, hotReload=False, statusStorageDir=None,
         enableCmdQR=False, picDir=None, qrCallback=None,
-        loginCallback=None, exitCallback=None):
+        loginCallback=None, exitCallback=None, initCallback=None):
     if not test_connect():
         logger.info("You can't get access to internet or wechat domain, so exit.")
         sys.exit()
     self.useHotReload = hotReload
     self.hotReloadDir = statusStorageDir or self.hotReloadDir
+    self.init_message_func = initCallback
+
     if hotReload:
         if self.load_login_status(statusStorageDir,
                 loginCallback=loginCallback, exitCallback=exitCallback):
+
             self.wx_init = True
+            if self.init_message_func:
+                self.init_message_func()
+
             return
         self.login(enableCmdQR=enableCmdQR, picDir=picDir, qrCallback=qrCallback,
             loginCallback=loginCallback, exitCallback=exitCallback)
@@ -88,10 +95,12 @@ def msg_register(self, msgType, isFriendChat=False, isGroupChat=False, isMpChat=
                 self.functionDict['FriendChat'][_msgType] = fn
     return _msg_register
 
+
 def run(self, debug=False, blockThread=True, schedule=None):
     logger.info('Start auto replying.')
     if debug:
         set_logging(loggingLevel=logging.DEBUG)
+
     def reply_fn():
         try:
             while self.alive:
@@ -106,6 +115,7 @@ def run(self, debug=False, blockThread=True, schedule=None):
             self.alive = False
             logger.debug('itchat received an ^C and exit.')
             logger.info('Bye~')
+
     if blockThread:
         reply_fn()
     else:
