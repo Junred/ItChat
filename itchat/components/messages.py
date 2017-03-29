@@ -17,6 +17,7 @@ def load_messages(core):
     core.send_msg     = send_msg
     core.upload_file  = upload_file
     core.send_file    = send_file
+    core.transfer_image = transfer_image
     core.send_image   = send_image
     core.send_video   = send_video
     core.send         = send
@@ -172,9 +173,6 @@ def produce_msg(core, msgList):
                     'Text': m['FileName'], }
         elif m['MsgType'] == 51: # phone init
             msg = update_local_uin(core, m)
-            core.wx_init = True
-            if hasattr(core.init_message_func, '__call__'):
-                core.init_message_func()
         elif m['MsgType'] == 10000:
             msg = {
                 'Type': 'Note',
@@ -251,10 +249,12 @@ def send_raw_msg(self, msgType, content, toUserName):
         data=json.dumps(data, ensure_ascii=False).encode('utf8'))
     return ReturnValue(rawResponse=r)
 
+
 def send_msg(self, msg='Test Message', toUserName=None):
     logger.debug('Request to send a text message to %s: %s' % (toUserName, msg))
     r = self.send_raw_msg(1, msg, toUserName)
     return r
+
 
 def upload_file(self, fileDir, isPicture=False, isVideo=False,
         toUserName='filehelper'):
@@ -347,6 +347,7 @@ def send_file(self, fileDir, toUserName=None, mediaId=None):
             'LocalID': int(time.time() * 1e4),
             'ClientMsgId': int(time.time() * 1e4), },
         'Scene': 0, }
+
     headers = {
         'User-Agent': config.USER_AGENT,
         'Content-Type': 'application/json;charset=UTF-8', }
@@ -365,7 +366,7 @@ def send_image(self, fileDir, toUserName=None, mediaId=None):
             mediaId = r['MediaId']
         else:
             return r
-    url = '%s/webwxsendmsgimg?fun=async&f=json' % self.loginInfo['url']
+    url = '%s/webwxsendmsgimg?fun=async&f=json&pass_ticket=%s' % (self.loginInfo['url'], self.loginInfo['pass_ticket'])
     data = {
         'BaseRequest': self.loginInfo['BaseRequest'],
         'Msg': {
@@ -386,6 +387,29 @@ def send_image(self, fileDir, toUserName=None, mediaId=None):
     r = self.s.post(url, headers=headers,
         data=json.dumps(data, ensure_ascii=False).encode('utf8'))
     return ReturnValue(rawResponse=r)
+
+
+def transfer_image(self, content, toUserName=None, mediaId=''):
+    url = '%s/webwxsendmsgimg?fun=async&f=json&pass_ticket=%s' % (self.loginInfo['url'], self.loginInfo['pass_ticket'])
+    local_id = int(time.time() * 1e4)
+    data = {
+        'BaseRequest': self.loginInfo['BaseRequest'],
+        'Msg': {
+            'Type': 3,
+            'MediaId': mediaId,
+            'FromUserName': self.storageClass.userName,
+            'ToUserName': toUserName,
+            'LocalID': local_id,
+            'Content': content,
+            'ClientMsgId': local_id,},
+        'Scene': 2,}
+    headers = {
+        'User-Agent': config.USER_AGENT,
+        'Content-Type': 'application/json;charset=UTF-8',}
+    r = self.s.post(url, headers=headers,
+                    data=json.dumps(data, ensure_ascii=False).encode('utf8'))
+    return ReturnValue(rawResponse=r)
+
 
 def send_video(self, fileDir=None, toUserName=None, mediaId=None):
     logger.debug('Request to send a video(mediaId: %s) to %s: %s' % (

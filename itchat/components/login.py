@@ -189,19 +189,21 @@ def web_init(self):
         for item in dic['SyncKey']['List']])
     self.storageClass.userName = dic['User']['UserName']
     self.storageClass.nickName = dic['User']['NickName']
+    self.save_contact_info(dic['User']['UserName'], dic['User'])
     # deal with contact list returned when init
     contactList = dic.get('ContactList', [])
-    logging.debug(contactList)
-    chatroomList, otherList = [], []		
+    chatroomList, otherList = [], []
     for m in contactList:		
         if m['Sex'] != 0:		
             otherList.append(m)		
         elif '@@' in m['UserName']:		
             m['MemberList'] = [] # don't let dirty info pollute the list
-            chatroomList.append(m)		
+            chatroomList.append(m)
+            self.save_contact_info(m['UserName'], m)
         elif '@' in m['UserName']:		
             # mp will be dealt in update_local_friends as well		
-            otherList.append(m)		
+            otherList.append(m)
+            self.save_contact_info(m['UserName'], m)
     if chatroomList:
         update_local_chatrooms(self, chatroomList)		
     if otherList:

@@ -50,6 +50,7 @@ send_msg                    = originInstance.send_msg
 upload_file                 = originInstance.upload_file
 send_file                   = originInstance.send_file
 send_image                  = originInstance.send_image
+transfer_image              = originInstance.transfer_image
 send_video                  = originInstance.send_video
 send                        = originInstance.send
 # components.hotreload
@@ -65,3 +66,9 @@ search_friends              = originInstance.search_friends
 search_chatrooms            = originInstance.search_chatrooms
 search_mps                  = originInstance.search_mps
 set_logging                 = set_logging
+
+# contact
+save_contact_info           = originInstance.save_contact_info
+get_contact_info            = originInstance.get_contact_info
+save_contact_info_list      = originInstance.save_contact_info_list
+del_contact_info            = originInstance.del_contact_info

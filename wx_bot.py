@@ -6,6 +6,7 @@ import logging
 import sys
 
 import itchat
+import models
 from wxbot.bot_manager import BotManager
 
 logging.basicConfig(format='%(asctime)s\t%(filename)s:%(lineno)d\t%(levelname)5s\t%(message)s', level=logging.DEBUG)
@@ -33,5 +34,7 @@ if __name__ == '__main__':
 
     bot_id = sys.argv[1]
     bot_wx_account = sys.argv[2]
+
+    models._base.metadata.create_all(models.db.engine)
 
     main(bot_id, bot_wx_account)

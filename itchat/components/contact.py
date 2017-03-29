@@ -95,6 +95,8 @@ def update_chatroom(self, userName, detailedMember=False):
                 totalMemberList += get_detailed_member_info(chatroom['EncryChatRoomId'], memberList)
             chatroom['MemberList'] = totalMemberList
 
+            self.save_contact_info_list(totalMemberList)
+
     update_local_chatrooms(self, chatroomList)
     r = [self.storageClass.search_chatrooms(userName=c['UserName'])
         for c in chatroomList]
@@ -130,6 +132,8 @@ def update_friend(self, userName):
             break
         friendList += contact_list
 
+        self.save_contact_info_list(contact_list)
+
     update_local_friends(self, friendList)
     r = [self.storageClass.search_friends(userName=f['UserName'])
         for f in friendList]
@@ -151,6 +155,7 @@ def update_local_chatrooms(core, l):
         get a list of chatrooms for updating local chatrooms
         return a list of given chatrooms with updated info
     '''
+    delContactList = []
     for chatroom in l:
         # format new chatrooms
         utils.emoji_formatter(chatroom, 'NickName')
@@ -184,7 +189,17 @@ def update_local_chatrooms(core, l):
             for i, member in enumerate(oldChatroom['MemberList']):
                 if member['UserName'] not in existsUserNames: delList.append(i)
             delList.sort(reverse=True)
-            for i in delList: del oldChatroom['MemberList'][i]
+
+            delMemberListMsg = []
+            for i in delList:
+                delMemberListMsg.append(oldChatroom['MemberList'][i])
+                del oldChatroom['MemberList'][i]
+
+            delContactList.append({
+                'UserName': chatroom['UserName'],
+                'DelMemberList': delMemberListMsg
+            })
+
         #  - update OwnerUin
         if oldChatroom.get('ChatRoomOwner') and oldChatroom.get('MemberList'):
             oldChatroom['OwnerUin'] = utils.search_dict_list(oldChatroom['MemberList'],
@@ -204,7 +219,9 @@ def update_local_chatrooms(core, l):
         'Text'         : [chatroom['UserName'] for chatroom in l],
         'SystemInfo'   : 'chatrooms',
         'FromUserName' : core.storageClass.userName,
-        'ToUserName'   : core.storageClass.userName, }
+        'ToUserName'   : core.storageClass.userName,
+        'DelContactList': delContactList,
+    }
 
 @contact_change
 def update_local_friends(core, l):
@@ -242,7 +259,9 @@ def update_local_uin(core, msg):
     r = {
         'Type': 'System',
         'Text': usernameChangedList,
-        'SystemInfo': 'uins', }
+        'SystemInfo': 'uins',
+        'StatusNotifyCode': msg.get('StatusNotifyCode', 0)
+    }
     usernames = []
     if len(msg['StatusNotifyUserName']) > 0:
         usernames = msg['StatusNotifyUserName'].split(',')
@@ -351,9 +370,11 @@ def get_contact(self, update=False):
             otherList.append(m)
         elif '@@' in m['UserName']:
             chatroomList.append(m)
+            self.save_contact_info(m['UserName'], m)
         elif '@' in m['UserName']:
             # mp will be dealt in update_local_friends as well
             otherList.append(m)
+            self.save_contact_info(m['UserName'], m)
     if chatroomList:
         update_local_chatrooms(self, chatroomList)
     if otherList:
@@ -397,6 +418,7 @@ def set_alias(self, userName, alias):
     if r:
         oldFriendInfo['RemarkName'] = alias
     return r
+
 
 def set_pinned(self, userName, isPinned=True):
     url = '%s/webwxoplog?pass_ticket=%s' % (

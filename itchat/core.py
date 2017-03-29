@@ -49,6 +49,13 @@ class Core(object):
         self.mpList = self.storageClass.mpList
         self.chatroomList = self.storageClass.chatroomList
         self.msgList = self.storageClass.msgList
+
+        # contactInfo dict, key is userName
+        self.contactsUserNameDict = {}
+        self.contactsRemarkDict = {}
+        self.contactsNickNameDict = {}
+        self.contactsAttrStatusDict = {}
+
         self.loginInfo = {}
         self.s = SafeSession()
         self.uuid = None
@@ -373,6 +380,17 @@ class Core(object):
             it is defined in components/messages.py
         '''
         raise NotImplementedError()
+
+    def transfer_image(self, content, toUserName=None, mediaId=''):
+        ''' transfer image
+            for options
+                - content: receive from image message
+                - toUserName: 'UserName' key of friend dict
+                - mediaId: receive from media id
+            it is defined in components/messages.py
+        '''
+        raise NotImplementedError()
+
     def send_image(self, fileDir, toUserName=None, mediaId=None):
         ''' send image
             for options
@@ -486,5 +504,40 @@ class Core(object):
         return self.storageClass.search_chatrooms(name, userName)
     def search_mps(self, name=None, userName=None):
         return self.storageClass.search_mps(name, userName)
+
+    def save_contact_info(self, userName, contactInfo):
+        self.contactsUserNameDict[userName] = contactInfo
+        nickName = contactInfo.get('NickName', None)
+        attrStatus = contactInfo.get('AttrStatus', None)
+        # TODO nickname
+        if not nickName:
+            self.contactsNickNameDict[nickName] = contactInfo
+        if not attrStatus:
+            self.contactsAttrStatusDict[attrStatus] = contactInfo
+
+    def get_contact_info(self, userName=None, nickName=None, attrStatus=None):
+        contactInfo = self.contactsUserNameDict.get(userName, None)
+        if not contactInfo:
+            return contactInfo
+        contactInfo = self.contactsNickNameDict.get(nickName, None)
+        if not contactInfo:
+            return contactInfo
+        contactInfo = self.contactsAttrStatusDict.get(attrStatus, None)
+        if not contactInfo:
+            return contactInfo
+        return None
+
+    def save_contact_info_list(self, memberList):
+        for member in memberList:
+            self.save_contact_info(member['UserName'], member)
+
+    def del_contact_info(self, userName):
+        contactInfo = self.contactsUserNameDict.pop(userName, None)
+        nickName = contactInfo.get('NickName', None)
+        attrStatus = contactInfo.get('AttrStatus', None)
+        if not nickName:
+            self.contactsNickNameDict.pop(nickName)
+        if not attrStatus:
+            self.contactsAttrStatusDict.pop(attrStatus)
 
 load_components(Core)

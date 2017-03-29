@@ -15,10 +15,15 @@ class Msg(BaseModel):
     TYPE_TEXT = 1
     TYPE_IMAGE = 2
 
-    Type = Column('Type', Integer, nullable=False)
+    WxAccount = Column('WxAccount', String(64), nullable=False, index=True)
+    Type = Column('Type', String(32), nullable=False)
     Content = Column('Content', TEXT, nullable=False)
 
     @classmethod
-    def add_msg(cls, msg_type, content):
-        msg = cls(Type=msg_type, Content=content)
+    def add_msg(cls, wx_account, msg_type, content, auto_commit=False):
+        msg = cls(WxAccount=wx_account, Type=msg_type, Content=content)
+        if auto_commit:
+            cls.add(msg)
+            cls.commit()
+
         return msg

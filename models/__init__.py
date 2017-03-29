@@ -19,13 +19,14 @@ class BaseModel(_base):
     Id = Column('Id', Integer, primary_key=True, autoincrement=True)
     Status = Column('Status', SmallInteger, default=0)
     CreateTime = Column('CreateTime', DateTime, nullable=False, server_default=func.now())
-    UpdateTime = Column('UpdateTime', DateTime, onupdate=func.now())
+    UpdateTime = Column('UpdateTime', DateTime, onupdate=func.now(), server_default=func.now())
 
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            if k not in v:
-                raise RuntimeError('not found {0} attribute'.format(k))
-            setattr(self, k, v)
+    # @classmethod
+    # def __init__(cls, **kwargs):
+    #     for k, v in kwargs.items():
+    #         if k not in v:
+    #             raise RuntimeError('not found {0} attribute'.format(k))
+    #         setattr(cls, k, v)
 
     @classmethod
     def get_model_by_id(cls, model_id):
@@ -33,11 +34,11 @@ class BaseModel(_base):
 
     @classmethod
     def get_model_filter(cls, *args):
-        return db.session.query(cls).filter(*args).one()
+        return db.session.query(cls).filter(*args).first()
 
     @classmethod
     def get_model_filter_by(cls, **kwargs):
-        return db.session.query(cls).filter_by(**kwargs).one()
+        return db.session.query(cls).filter_by(**kwargs).first()
 
     @classmethod
     def get_models_filter(cls, *args):
@@ -45,11 +46,22 @@ class BaseModel(_base):
 
     @classmethod
     def get_models_filter_by(cls, **kwargs):
-        return db.session.qeury(cls).filter_by(**kwargs).all()
+        return db.session.query(cls).filter_by(**kwargs).all()
+
+    @classmethod
+    def clear_all(cls):
+        db.session.query(cls).delete()
+        cls.commit()
 
     @staticmethod
     def add(model):
         db.session.add(model)
+
+    @staticmethod
+    def delete(model, auto_commit=False):
+        db.session.delete(model)
+        if auto_commit:
+            BaseModel.commit()
 
     @staticmethod
     def merge(model):
@@ -62,3 +74,14 @@ class BaseModel(_base):
     @staticmethod
     def begin_transaction():
         db.session.begin()
+
+    @staticmethod
+    def save(models, auto_commit=True):
+        if not isinstance(models, list):
+            models = [models,]
+        for model in models:
+            db.session.add(model)
+        if auto_commit:
+            db.session.commit()
+
+from . import chatroom, msg_lib, robot, task, user, msg_reply
