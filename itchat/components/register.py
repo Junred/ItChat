@@ -38,7 +38,7 @@ def auto_login(self, hotReload=False, statusStorageDir=None,
             return
         self.login(enableCmdQR=enableCmdQR, picDir=picDir, qrCallback=qrCallback,
             loginCallback=loginCallback, exitCallback=exitCallback)
-        # self.dump_login_status(statusStorageDir)
+        self.dump_login_status(statusStorageDir)
         # self.hotReloadDir = statusStorageDir
     else:
         self.login(enableCmdQR=enableCmdQR, picDir=picDir, qrCallback=qrCallback,
