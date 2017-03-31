@@ -80,6 +80,7 @@ def configured_reply(self):
                 logger.warning(traceback.format_exc())
 
         if msg.get('Type') == 'System' and  msg.get('SystemInfo') == 'uins':
+            self.wx_init = True
             if self.init_message_func:
                 self.init_message_func()
 
