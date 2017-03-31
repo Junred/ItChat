@@ -43,7 +43,7 @@ class Core(object):
                 - it's 5 now, but actually even 1 is enough
                 - failing is failing
         '''
-        self.alive, self.isLogging = False, False
+        self.alive, self.isLogging, self.isLoggedIn = False, False, False
         self.storageClass = storage.Storage()
         self.memberList = self.storageClass.memberList
         self.mpList = self.storageClass.mpList
@@ -489,13 +489,17 @@ class Core(object):
             return a specific decorator based on information given
         '''
         raise NotImplementedError()
-    def run(self, debug=True, blockThread=True, schedule=None, init_message=None):
+    def run(self, debug=True, blockThread=True, schedule=None, init_message=None, exitCallback=None):
         ''' start auto respond
             for option
                 - debug: if set, debug info will be shown on screen
             it is defined in components/register.py
         '''
         raise NotImplementedError()
+
+    def stop(self):
+        raise NotImplementedError()
+
     def search_friends(self, name=None, userName=None, remarkName=None, nickName=None,
             wechatAccount=None):
         return self.storageClass.search_friends(name, userName, remarkName,

@@ -15,11 +15,15 @@ def decode_nickname(value):
 class ChatRoom(BaseModel):
     __tablename__ = 'ChatRoom'
 
-    Uin = Column('Uin', String(64), unique=True)
+    Uin = Column('Uin', String(64), index=True)
     WxAccount = Column('WxAccount', String(64), index=True)
     UserName = Column('UserName', String(256), index=True)
     _NickName = Column('NickName', Binary)
     IsManager = Column('IsManager', Boolean, default=False)
+
+    __table_args__ = (
+        UniqueConstraint(Uin.name, WxAccount.name, name='uin_wx_account_unique_id'),
+    )
 
     @property
     def NickName(self):

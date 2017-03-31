@@ -61,6 +61,7 @@ auto_login                  = originInstance.auto_login
 configured_reply            = originInstance.configured_reply
 msg_register                = originInstance.msg_register
 run                         = originInstance.run
+stop                        = originInstance.stop
 # other functions
 search_friends              = originInstance.search_friends
 search_chatrooms            = originInstance.search_chatrooms

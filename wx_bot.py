@@ -4,10 +4,12 @@
 """
 import logging
 import sys
+import os
 
 import itchat
 import models
 from wxbot.bot_manager import BotManager
+from models.robot import Robot
 
 logging.basicConfig(format='%(asctime)s\t%(filename)s:%(lineno)d\t%(levelname)5s\t%(message)s', level=logging.DEBUG)
 
@@ -17,14 +19,30 @@ def main(bot_id, bot_wx_account):
 
     logging.debug('bot starting with bot_id:{0}, bot_wx_account:{1}'.format(bot_id, bot_wx_account))
 
-    storage_dir = 'data/{0}.pkl'.format(bot_wx_account)
+    robot_model = Robot.get_model_filter(Robot.Id == bot_id, Robot.WxAccount == bot_wx_account)
+    if robot_model is None:
+        logging.error('bot id:{0} bot_wx_account:{1} not created'.format(bot_id, bot_wx_account))
+        return
 
-    BotManager.set_bot(bot_id, bot_wx_account, storage_dir)
+    if robot_model.get_status() != Robot.STATUS_STOPPED:
+        logging.error('robot already starting')
+        return
+
+    root_path = os.path.dirname(os.path.abspath(__file__))
+    logging.debug(root_path)
+    storage_dir = '{0}/data/{1}.pkl'.format(root_path, bot_wx_account)
+
+    BotManager.set_bot(robot_model, root_path, storage_dir)
+
+    robot_model.start()
+    robot_model.Pid = os.getpid()
+    Robot.save([robot_model])
+    logging.info('wxbot {0} {1} {2} starting'.format(bot_id, bot_wx_account, robot_model.Pid))
 
     itchat.auto_login(hotReload=True, statusStorageDir=storage_dir, qrCallback=BotManager.qr_callback,
                       loginCallback=BotManager.login_callback, exitCallback=BotManager.exit_callback,
                       initCallback=BotManager.init_message)
-    itchat.run(blockThread=True, schedule=BotManager.schedule)
+    itchat.run(blockThread=True, schedule=BotManager.schedule, exitCallback=BotManager.exit_callback)
 
 
 if __name__ == '__main__':

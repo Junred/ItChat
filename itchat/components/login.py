@@ -47,7 +47,9 @@ def login(self, enableCmdQR=False, picDir=None, qrCallback=None,
         while not isLoggedIn:
             status = self.check_login()
             if hasattr(qrCallback, '__call__'):
-                qrCallback(uuid=self.uuid, status=status, qrcode=qrStorage.getvalue())
+                if qrCallback(uuid=self.uuid, status=status, qrcode=qrStorage.getvalue()):
+                    logger.debug('qrCallback break')
+                    return
             if status == '200':
                 isLoggedIn = True
             elif status == '201':
@@ -279,6 +281,7 @@ def start_receiving(self, exitCallback=None, getReceivingFnOnly=False):
                     time.sleep(1)
 
         self.logout()
+        logger.info('------- exit -------')
         if hasattr(exitCallback, '__call__'):
             exitCallback()
         else:

@@ -14,6 +14,7 @@ def load_register(core):
     core.configured_reply = configured_reply
     core.msg_register     = msg_register
     core.run              = run
+    core.stop             = stop
 
 
 def auto_login(self, hotReload=False, statusStorageDir=None,
@@ -37,7 +38,7 @@ def auto_login(self, hotReload=False, statusStorageDir=None,
             return
         self.login(enableCmdQR=enableCmdQR, picDir=picDir, qrCallback=qrCallback,
             loginCallback=loginCallback, exitCallback=exitCallback)
-        self.dump_login_status(statusStorageDir)
+        # self.dump_login_status(statusStorageDir)
         # self.hotReloadDir = statusStorageDir
     else:
         self.login(enableCmdQR=enableCmdQR, picDir=picDir, qrCallback=qrCallback,
@@ -78,6 +79,10 @@ def configured_reply(self):
             except:
                 logger.warning(traceback.format_exc())
 
+        if msg.get('Type') == 'System' and  msg.get('SystemInfo') == 'uins':
+            if self.init_message_func:
+                self.init_message_func()
+
 def msg_register(self, msgType, isFriendChat=False, isGroupChat=False, isMpChat=False):
     ''' a decorator constructor
         return a specific decorator based on information given '''
@@ -96,7 +101,7 @@ def msg_register(self, msgType, isFriendChat=False, isGroupChat=False, isMpChat=
     return _msg_register
 
 
-def run(self, debug=False, blockThread=True, schedule=None):
+def run(self, debug=False, blockThread=True, schedule=None, exitCallback=None):
     logger.info('Start auto replying.')
     if debug:
         set_logging(loggingLevel=logging.DEBUG)
@@ -109,12 +114,21 @@ def run(self, debug=False, blockThread=True, schedule=None):
                 if schedule:
                     schedule(self)
 
-        except KeyboardInterrupt:
-            if self.useHotReload:
-                self.dump_login_status()
-            self.alive = False
-            logger.debug('itchat received an ^C and exit.')
-            logger.info('Bye~')
+        except KeyboardInterrupt as e:
+            logger.exception(e)
+
+        if self.useHotReload and self.isLoggedIn:
+            self.dump_login_status()
+        self.alive = False
+        self.isLogging = False
+        self.isLoggedIn = True
+        logger.debug('itchat received an ^C and exit.')
+        logger.info('Bye~')
+
+        if hasattr(exitCallback, '__call__'):
+            exitCallback()
+        else:
+            logger.info('LOG OUT!')
 
     if blockThread:
         reply_fn()
@@ -122,3 +136,6 @@ def run(self, debug=False, blockThread=True, schedule=None):
         replyThread = threading.Thread(target=reply_fn)
         replyThread.setDaemon(True)
         replyThread.start()
+
+def stop(self):
+    self.alive = False

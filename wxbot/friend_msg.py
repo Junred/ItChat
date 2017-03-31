@@ -9,6 +9,9 @@ logger = logging.getLogger('GroupMsg')
 
 
 class FriendMsg(object):
+
+    wx_account = ''
+
     @staticmethod
     def log(msg):
         logger.debug('-' * 25 + msg['Type'] + '-' * 25)
@@ -29,6 +32,8 @@ class FriendMsg(object):
     @staticmethod
     @itchat.msg_register(PICTURE, isFriendChat=True)
     def process_image(msg):
+        from wxbot.bot_manager import BotManager
+
         FriendMsg.log(msg)
 
         to_username = msg['ToUserName']
@@ -36,7 +41,8 @@ class FriendMsg(object):
 
         if itchat.originInstance.storageClass.userName == from_username and to_username == 'filehelper':
             logger.debug('receive msg from filehelper: {0}'.format(msg['Content']))
-            save_to = 'data/images/{0}'.format(msg['FileName'])
+            save_to = '{0}/data/images/{1}'.format(BotManager.root_path, msg['FileName'])
+            logger.debug(save_to)
             download_fn = msg['Text']
             ret = download_fn(save_to)
             if ret:

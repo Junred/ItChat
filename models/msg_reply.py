@@ -10,6 +10,7 @@ class MsgReply(BaseModel):
 
     TYPE_KEYWORDS_REPLY = 1
     TYPE_CHAT_ROOM_COUNT_REPLY = 2
+    TYPE_KICK_KEYWORDS_REPLY = 3
 
     WxAccount = Column('WxAccount', String(64), index=True)
     Type = Column('Type', Integer, nullable=False)
@@ -35,6 +36,8 @@ class MsgReply(BaseModel):
             return '关键字'
         elif reply_type == cls.TYPE_CHAT_ROOM_COUNT_REPLY:
             return '群人数'
+        elif reply_type == cls.TYPE_KICK_KEYWORDS_REPLY:
+            return '踢人关键字'
         return 'unknown'
 
     @classmethod

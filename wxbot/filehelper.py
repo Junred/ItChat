@@ -1,13 +1,18 @@
 # coding=utf-8
 import time
 import datetime
+import os
+import logging
 
 import itchat
 from itchat.content import *
 from models.msg_lib import Msg
 from models.msg_reply import MsgReply
-from models.chatroom import ChatRoom
+# from models.chatroom import ChatRoom
 from models.task import Task
+from models.robot import Robot
+
+logger = logging.getLogger('FileHelper')
 
 
 class FileHelper(object):
@@ -22,6 +27,10 @@ class FileHelper(object):
     MSG_LIB_ID = 0
 
     wx_account = ''
+
+    ADD_ROBOT_FORMAT = '添加助手 微信账号(唯一) 助手昵称'
+    START_ROBOT_FORMAT = '启动助手 助手ID 微信账号'
+    STOP_ROBOT_FORMAT = '停止助手 助手ID 微信账号'
 
     @classmethod
     def send_text_msg(cls, content):
@@ -122,6 +131,18 @@ class FileHelper(object):
         elif content.startswith('我要群发'):
             cls.group_send(content)
             return
+        elif content.startswith('查看助手'):
+            cls.get_robots(content)
+            return
+        elif content.startswith('添加助手'):
+            cls.add_robot(content)
+            return
+        elif content.startswith('启动助手'):
+            cls.start_robot(content)
+            return
+        elif content.startswith('停止助手'):
+            cls.stop_robot(content)
+            return
 
         if cls.STATUS_START_ADD_MSG_LIB:
             cls.add_msg_lib(TEXT, content)
@@ -139,6 +160,7 @@ class FileHelper(object):
 
     @classmethod
     def send_all_help(cls):
+        from wxbot.bot_manager import BotManager
         msg = '输入 "查看帮助"\n显示所有的帮助信息\n\n'
         msg += '输入 "查看群列表"\n显示所有群名称列表,并标记我是否是群主\n'
         msg += '输入 "搜索群列表 群昵称\n"'
@@ -166,10 +188,17 @@ class FileHelper(object):
         msg += '输入 "我要群发 群主/成员 群名关键字 消息编号(多个用逗号分割)"\n群主:表示只发自己是群主的群，成员:表示只要自己在群内\n\n'
 
         cls.send_text_msg(msg)
+        msg = ''
+        if BotManager.robot_model.check_function(Robot.FUNCTION_TYPE_CREATE_ROBOT):
+            msg += '输入 "查询助手 助手编号(可选) 助手微信账号(可选)"\n列出所有助手\n'
+            msg += '输入 "添加助手 助手微信账号"\n填佳逸个新的助手\n'
+            msg += '输入 "启动助手 助手编号 助手微信账号"\n启动对应的助手\n'
+            msg += '输入 "停止助手 助手编号 助手微信账号"\n停止某助手\n\n'
+
+            cls.send_text_msg(msg)
 
     @classmethod
     def output_chatrooms(cls, chat_rooms):
-        from wxbot.bot_manager import BotManager
         n = 0
         msg = ''
         for chat_room in chat_rooms:
@@ -177,12 +206,14 @@ class FileHelper(object):
             if chat_room.get('IsOwner', 0) != 0:
                 is_owner = '我是群主'
 
-            room_model = ChatRoom.get_model_filter(ChatRoom.WxAccount == BotManager.wx_account,
-                                                   ChatRoom.UserName == chat_room['UserName'])
-            if room_model is None:
-                cls.send_text_msg('{0} 在数据库中未找到'.format(chat_room['NickName']))
-                continue
-            msg += '{0}-{1}-{2}\n'.format(chat_room['NickName'], is_owner, '已管理' if room_model.IsManager else '')
+            # room_model = ChatRoom.get_model_filter(ChatRoom.WxAccount == cls.wx_account,
+            #                                        ChatRoom.UserName == chat_room['UserName'])
+            # if room_model is None:
+            #     msg += '{0} 在数据库中未找到'.format(chat_room['NickName'])
+            # else:
+            #     msg += '{0}-{1}-{2}\n'.format(chat_room['NickName'], is_owner, '已管理' if room_model.IsManager else '')
+
+            msg += '{0}-{1}\n'.format(chat_room['NickName'], is_owner)
             n += 1
             if n % 15 == 0:
                 itchat.send_msg(msg)
@@ -213,7 +244,6 @@ class FileHelper(object):
 
     @classmethod
     def update_chatroom_manager(cls, content, is_manager):
-        from wxbot.bot_manager import BotManager
         content_arr = content.split(' ')
         if len(content_arr) != 2:
             cls.send_text_msg('格式不正确\n添加群管理 群昵称')
@@ -223,33 +253,32 @@ class FileHelper(object):
             cls.send_text_msg('没有找到相应的群')
             return
 
-        msg = ''
-        update_models = []
-        for chat_room in chat_rooms:
-            room_model = ChatRoom.get_model_filter(ChatRoom.WxAccount == BotManager.wx_account,
-                                                   ChatRoom.UserName == chat_room['UserName'])
-            if room_model is None:
-                continue
-
-            room_model.IsManager = is_manager
-            update_models.append(room_model)
-
-            msg += '{0} {1} 管理成功\n'.format(chat_room['NickName'], '添加' if is_manager else '取消')
-
-            if len(update_models) % 15 == 0:
-                ChatRoom.save(update_models, auto_commit=True)
-                cls.send_text_msg(msg)
-                update_models = []
-
-        if len(update_models) > 0:
-            ChatRoom.save(update_models, auto_commit=True)
-            cls.send_text_msg(msg)
+        # msg = ''
+        # update_models = []
+        # for chat_room in chat_rooms:
+        #     room_model = ChatRoom.get_model_filter(ChatRoom.WxAccount == cls.wx_account,
+        #                                            ChatRoom.UserName == chat_room['UserName'])
+        #     if room_model is None:
+        #         continue
+        #
+        #     room_model.IsManager = is_manager
+        #     update_models.append(room_model)
+        #
+        #     msg += '{0} {1} 管理成功\n'.format(chat_room['NickName'], '添加' if is_manager else '取消')
+        #
+        #     if len(update_models) % 15 == 0:
+        #         ChatRoom.save(update_models, auto_commit=True)
+        #         cls.send_text_msg(msg)
+        #         update_models = []
+        #
+        # if len(update_models) > 0:
+        #     ChatRoom.save(update_models, auto_commit=True)
+        #     cls.send_text_msg(msg)
 
     @classmethod
     def show_all_msg_lib(cls):
-        from wxbot.bot_manager import BotManager
 
-        msg_models = Msg.get_models_filter_by(WxAccount=BotManager.wx_account)
+        msg_models = Msg.get_models_filter_by(WxAccount=cls.wx_account)
         if msg_models is None or len(msg_models) == 0:
             cls.send_text_msg('抱歉，你的消息库为空')
             return None
@@ -272,19 +301,16 @@ class FileHelper(object):
 
     @classmethod
     def add_msg_lib(cls, content_type, content):
-        from wxbot.bot_manager import BotManager
-
         tips = '失败'
-        if Msg.add_msg(BotManager.wx_account, content_type, content, auto_commit=True):
+        if Msg.add_msg(cls.wx_account, content_type, content, auto_commit=True):
             tips = '成功'
 
         cls.send_text_msg('添加{0}'.format(tips))
 
     @classmethod
     def show_all_msg_reply(cls, reply_type):
-        from wxbot.bot_manager import BotManager
 
-        reply_models = MsgReply.get_models_filter_by(WxAccount=BotManager.wx_account, Type=reply_type)
+        reply_models = MsgReply.get_models_filter_by(WxAccount=cls.wx_account, Type=reply_type)
         if reply_models is None or len(reply_models) == 0:
             cls.send_text_msg('你还没有{0}回复'.format(MsgReply.get_reply_type_name(reply_type)))
             return None
@@ -303,9 +329,8 @@ class FileHelper(object):
 
     @classmethod
     def modify_msg_lib(cls, content_type, content):
-        from wxbot.bot_manager import BotManager
 
-        msg_model = Msg.get_model_filter(Msg.WxAccount == BotManager.wx_account, Msg.Id == cls.MSG_LIB_ID)
+        msg_model = Msg.get_model_filter(Msg.WxAccount == cls.wx_account, Msg.Id == cls.MSG_LIB_ID)
         if msg_model is None:
             cls.send_text_msg('消息编号 [{0}] 不存在'.format(cls.MSG_LIB_ID))
             return
@@ -317,8 +342,6 @@ class FileHelper(object):
     @classmethod
     def add_keyword_msg_reply(cls, content, reply_type):
         # 添加关键字消息回复策略 关键字 消息编号(多个用英文,分割)
-        from wxbot.bot_manager import BotManager
-
         reply_type_name = MsgReply.get_reply_type_name(reply_type)
 
         content_arr = content.split(' ')
@@ -327,7 +350,7 @@ class FileHelper(object):
             return
         keyword, msg_number = content_arr[1], content_arr[2]
 
-        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == BotManager.wx_account,
+        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == cls.wx_account,
                                                 MsgReply.Condition == keyword,
                                                 MsgReply.Type == reply_type)
         if reply_model:
@@ -339,21 +362,19 @@ class FileHelper(object):
             cls.send_text_msg('请输入消息编号')
             return
 
-        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == BotManager.wx_account, Msg.Id.in_(msg_numbers))
+        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_numbers))
         if msg_lib_models is None or len(msg_numbers) != len(msg_lib_models):
             cls.send_text_msg('消息编号错误')
             return
 
         tips = '失败'
-        if MsgReply.add_reply(BotManager.wx_account, reply_type, keyword, msg_numbers,
-                              auto_commit=True):
+        if MsgReply.add_reply(cls.wx_account, reply_type, keyword, msg_numbers, auto_commit=True):
             tips = '成功'
         cls.send_text_msg('添加{0}消息回复策略-{1}'.format(reply_type_name, tips))
 
     @classmethod
     def del_keyword_msg_reply(cls, content, reply_type):
         """删除关键字消息回复策略 关键字"""
-        from wxbot.bot_manager import BotManager
         content_arr = content.split(' ')
         if len(content_arr) != 2:
             cls.send_text_msg('格式不正确\n删除{0}消息回复策略 {1}'.format(MsgReply.get_reply_type_name(reply_type),
@@ -361,7 +382,7 @@ class FileHelper(object):
             return
 
         keywords = content_arr[1]
-        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == BotManager.wx_account,
+        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == cls.wx_account,
                                                 MsgReply.Condition == keywords,
                                                 MsgReply.Type == reply_type)
         if reply_model is None:
@@ -374,8 +395,6 @@ class FileHelper(object):
     @classmethod
     def modify_keywords_msg_reply(cls, content, reply_type):
         # 添加关键字消息回复策略 关键字 消息编号(多个用英文,分割)
-        from wxbot.bot_manager import BotManager
-
         reply_type_name = MsgReply.get_reply_type_name(reply_type)
 
         content_arr = content.split(' ')
@@ -384,7 +403,7 @@ class FileHelper(object):
             return
         keyword, msg_number = content_arr[1], content_arr[2]
 
-        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == BotManager.wx_account,
+        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == cls.wx_account,
                                                 MsgReply.Condition == keyword,
                                                 MsgReply.Type == reply_type)
         if reply_model is None:
@@ -396,7 +415,7 @@ class FileHelper(object):
             cls.send_text_msg('请输入消息编号')
             return
 
-        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == BotManager.wx_account, Msg.Id.in_(msg_numbers))
+        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_numbers))
         if msg_lib_models is None or len(msg_numbers) != len(msg_lib_models):
             cls.send_text_msg('消息编号错误')
             return
@@ -413,12 +432,12 @@ class FileHelper(object):
             cls.send_text_msg('消息格式不正确\n我要群发 群主/成员 群名关键字 消息编号(多个用逗号分割)"\n群主:表示只发自己是群主的群，成员:表示只要自己在群内')
             return
 
-        room_models = ChatRoom.get_models_filter(ChatRoom.WxAccount == cls.wx_account, ChatRoom.IsManager == True)
-        # username => room_model
-        room_model_map = {}
-        if room_models:
-            for room_model in room_models:
-                room_model_map[room_model.UserName] = room_model
+        # room_models = ChatRoom.get_models_filter(ChatRoom.WxAccount == cls.wx_account, ChatRoom.IsManager == True)
+        # # username => room_model
+        # room_model_map = {}
+        # if room_models:
+        #     for room_model in room_models:
+        #         room_model_map[room_model.UserName] = room_model
 
         now = datetime.datetime.now()
         check_is_owner = True if content_arr[1] == '群主' else False
@@ -430,8 +449,8 @@ class FileHelper(object):
                 if check_is_owner and not chatroom.get('IsOwner', 0):
                     continue
 
-                if room_model_map.get(username, None) is None:
-                    continue
+                # if room_model_map.get(username, None) is None:
+                #     continue
 
                 # need to send
                 now += datetime.timedelta(seconds=6)
@@ -445,3 +464,102 @@ class FileHelper(object):
 
             if len(update_models) > 0:
                 Task.save(update_models, True)
+
+    @classmethod
+    def get_robots(cls, content):
+        from .bot_manager import BotManager
+
+        content_arr = content.split(' ')
+        bot_id = None
+        wx_account = None
+        condition = [Robot.UserId == BotManager.get_robot_model().UserId]
+
+        if len(content_arr) == 3:
+            bot_id = int(content_arr[1])
+            wx_account = content_arr[2]
+            condition.append(Robot.Id == bot_id)
+            condition.append(Robot.WxAccount == wx_account)
+
+        robot_models = Robot.get_models_filter(*condition)
+
+        msg = ''
+        n = 0
+        for robot_model in robot_models:
+            txt = '{0} {1} {2} {3}\n'.format(robot_model.Id, robot_model.WxAccount, robot_model.NickName,
+                                             robot_model.get_status_name())
+            if robot_model.Id == bot_id and robot_model.WxAccount == wx_account and robot_model.LoginQrUrl and robot_model.is_wait_scan():
+                logger.debug('wait scan: {0}'.format(robot_model.LoginQrUrl))
+                cls.send_text_msg(txt)
+                cls.send_image_msg(robot_model.LoginQrUrl)
+                continue
+
+            n += 1
+            msg += txt
+            if n % 15 == 0:
+                cls.send_text_msg(msg)
+                msg = ''
+
+        if len(msg) > 0:
+            cls.send_text_msg(msg)
+
+    @classmethod
+    def add_robot(cls, content):
+        # 添加助手 微信账号(唯一) 助手昵称
+        from .bot_manager import BotManager
+        content_arr = content.split(' ')
+        if len(content_arr) != 3:
+            cls.send_text_msg('格式错误\n{0}'.format(cls.ADD_ROBOT_FORMAT))
+            return
+
+        Robot.add_robot(content_arr[1], BotManager.get_robot_model().UserId, content_arr[2], [2, 3, 4],
+                        auto_commit=True)
+        cls.send_text_msg('添加成功\n')
+
+    @classmethod
+    def start_robot(cls, content):
+        # 启动助手 助手ID 微信账号
+        from wxbot.bot_manager import BotManager
+        content_arr = content.split(' ')
+        if len(content_arr) != 3:
+            cls.send_text_msg('格式错误\n{0}'.format(cls.START_ROBOT_FORMAT))
+            return
+        bot_id = content_arr[1]
+        wx_account = content_arr[2]
+
+        robot_model = Robot.get_model_filter(Robot.Id == bot_id, Robot.WxAccount == wx_account)
+        if robot_model is None:
+            cls.send_text_msg('{0} {1} 助手未找到'.format(bot_id, wx_account))
+            return
+
+        python_path = '{0}/venv/bin/python'.format(BotManager.root_path)
+        py_path = '{0}/wx_bot.py {1} {2}'.format(BotManager.root_path, bot_id, wx_account)
+        ret = os.system('{0} {1} &'.format(python_path, py_path))
+
+        logger.debug(ret)
+
+        cls.send_text_msg('启动中\n你可以查看所有助手状态')
+
+    @classmethod
+    def stop_robot(cls, content):
+        content_arr = content.split(' ')
+        if len(content_arr) != 3:
+            cls.send_text_msg('格式错误\n'.format(cls.STOP_ROBOT_FORMAT))
+            return
+        _, bot_id, wx_account = content_arr
+
+        robot = Robot.get_model_filter(Robot.Id == bot_id, Robot.WxAccount == wx_account)
+        if robot is None:
+            cls.send_text_msg('{0} {1} 助手未找到'.format(robot.Id, robot.WxAccount))
+            return
+
+        logger.info('stoping bot {0} {1} {2}'.format(robot.Id, robot.WxAccount, robot.Pid))
+
+        robot.stop()
+        Robot.save([robot])
+
+        cmd = 'kill {0}'.format(robot.Pid)
+        ret = os.system(cmd)
+
+        logger.debug(ret)
+
+        cls.send_text_msg('停止中\n你可以查看所有助手状态')
