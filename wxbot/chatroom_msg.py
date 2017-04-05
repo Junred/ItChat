@@ -18,11 +18,38 @@ class ChatRoomMsg(object):
 
     OTHER_KICK_KEYWORDS = '其他踢人消息回复'
 
+    # 媒体文件缓存
+    medias_cache = {}
+    # 媒体文件技术
+    medias_count = {}
+
     @staticmethod
     def log(msg):
         logger.debug('-' * 25 + msg['Type'] + '-' * 25)
         logger.debug(msg)
         logger.debug('=' * 50)
+
+    @classmethod
+    def send_image(cls, image, to_username):
+        cnt = cls.medias_count.get(image, 0)
+        if cnt >= 10:
+            cnt = 0
+            mid = None
+        else:
+            cnt += 1
+            mid = cls.medias_cache.get(image, None)
+
+        if mid is None:
+            mid = itchat.upload_file(image, isPicture=True)
+
+        if not mid:
+            logger.error('upload image failed')
+            logger.error(mid)
+            return
+
+        cls.medias_cache[image] = mid
+        cls.medias_count[image] = cnt
+        itchat.send_image(image, toUserName=to_username, mediaId=mid)
 
     @staticmethod
     def get_invite_in_username(data):
@@ -67,7 +94,7 @@ class ChatRoomMsg(object):
                 itchat.send_msg(msg_model.Content, toUserName=user_name)
             elif msg_model.Type == PICTURE:
                 # todo image 需要复用
-                itchat.send_image(msg_model.Content, toUserName=user_name)
+                ChatRoomMsg.send_image(msg_model.Content, user_name)
 
             n += 1
 
