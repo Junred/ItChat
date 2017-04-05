@@ -167,7 +167,7 @@ class ChatRoomMsg(object):
             return
 
         if kick_out_reply_msg_models is None:
-            kick_out_reply_msg_models = ReplyManager.get_kick_member_reply_msg('其他踢人消息回复')
+            kick_out_reply_msg_models = ReplyManager.get_kick_member_reply_msg(msg_content)
 
         if kick_out_reply_msg_models is None and len(kick_out_reply_msg_models) == 0:
             logger.warn('kickout reply msg is None')
