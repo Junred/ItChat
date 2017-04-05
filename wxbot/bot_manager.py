@@ -111,7 +111,7 @@ class BotManager(object):
         TaskManner.process(BotManager.get_robot_wx_account())
         ReplyManager.refresh_settings()
 
-        BotManager.update_robot_model();
+        BotManager.update_robot_model()
         BotManager.robot_model.UpdateTime = datetime.datetime.now()
         Robot.save([BotManager.robot_model])
 

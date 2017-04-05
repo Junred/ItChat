@@ -9,7 +9,7 @@ from itchat.content import *
 
 
 send_config = {
-    'MUST_KEYWORDS': ['科学添加'],
+    'MUST_KEYWORDS': ['推拿'],
 
     'SHOULD_KEYWORDS': [],
 
@@ -20,11 +20,11 @@ send_config = {
             'msg': [
                 {
                     'type': PICTURE,
-                    'content': 'groupsend/fushi_guanggao_31.jpg',
+                    'content': 'groupsend/tuina_guanggao_04.png',
                 },
                 {
                     'type': TEXT,
-                    'content': '@所有人 【今日辅食课程】请点击图片，按图示免费获取!未查收到图片的妈妈们，请关注微信公众号【科学辅食每天教】，点击每日辅食菜单。'
+                    'content': '【今日小儿推拿课程】点击上图免费学习。没有看到图片的家长可以，在微信搜索“天天教你推拿小技巧”关注微信公众号，点击菜单【每日课程】免费获取！'
                 },
             ]
         },
@@ -144,7 +144,7 @@ def send_msg_to_group(group_info, content_arr):
             if send_switch:
                 itchat.send_image(content, toUserName=group_info['UserName'], mediaId=mid)
 
-        time.sleep(2)
+        time.sleep(1)
 
     return True
 
@@ -179,7 +179,7 @@ def send_groups_msg():
         for i in range(1):
             send_msg_to_group(group_info, msg_arr)
 
-        time.sleep(4)
+        time.sleep(10)
 
 
 def schedule(core):

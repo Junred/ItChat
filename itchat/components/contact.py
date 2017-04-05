@@ -277,7 +277,7 @@ def update_local_uin(core, msg):
         if len(chat_names) > 0:
             logger.debug('get chatrooms')
             # logger.debug(chat_names)
-            core.update_chatroom(chat_names, detailedMember=True)
+            core.update_chatroom(chat_names, detailedMember=False)
         if len(friend_names) > 0:
             logger.debug('get friends')
             # logger.debug(friend_names)

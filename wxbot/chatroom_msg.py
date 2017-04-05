@@ -14,6 +14,10 @@ logger = logging.getLogger('GroupMsg')
 class ChatRoomMsg(object):
     wx_account = ''
 
+    username_white_list = []
+
+    OTHER_KICK_KEYWORDS = '其他踢人消息回复'
+
     @staticmethod
     def log(msg):
         logger.debug('-' * 25 + msg['Type'] + '-' * 25)
@@ -52,16 +56,17 @@ class ChatRoomMsg(object):
             return
 
         n = 0
+        if is_at:
+            itchat.send_msg('@{0}'.format(nickname), toUserName=user_name)
+
         for msg_model in msg_lib_models:
             if n > 0:
                 time.sleep(1)
 
             if msg_model.Type == TEXT:
-                msg_content = msg_model.Content
-                if is_at:
-                    msg_content = '@{0} '.format(nickname, msg_model.Content)
-                itchat.send_msg(msg_content, toUserName=user_name)
+                itchat.send_msg(msg_model.Content, toUserName=user_name)
             elif msg_model.Type == PICTURE:
+                # todo image 需要复用
                 itchat.send_image(msg_model.Content, toUserName=user_name)
 
             n += 1
@@ -76,6 +81,7 @@ class ChatRoomMsg(object):
         actual_username = msg['ActualUserName']
         from_username = msg['FromUserName']
         to_username = msg['ToUserName']
+        actual_nickname = msg['ActualNickName']
 
         if from_username == itchat.originInstance.storageClass.userName:
             logger.debug('msg is from my own')
@@ -95,17 +101,25 @@ class ChatRoomMsg(object):
             logger.debug('is not my own chatroom: {0}'.format(chatroom.get('NickName')))
             return
 
+        if chatroom['NickName'] == '管理员总群' and msg.get('Content') == '获取全部群成员93812':
+            ChatRoomMsg.update_white_list(chatroom)
+
         msg_content = msg.get('Content', '')
         ChatRoomMsg.send_chatroom_msg(ReplyManager.get_keywords_reply_msgs(msg.get('Content', '')), from_username)
 
-        kick_out_reply_msg_models = ReplyManager.get_keywords_reply_msgs(msg_content)
+        kick_out_reply_msg_models = ReplyManager.get_kick_member_reply_msg(msg_content)
         if len(kick_out_reply_msg_models) > 0:
-            ChatRoomMsg.send_kickout(from_username, actual_username, kick_out_reply_msg_models)
+            ChatRoomMsg.send_kickout(from_username, actual_username,
+                                     kick_out_reply_msg_models=kick_out_reply_msg_models)
 
     @staticmethod
-    def send_kickout(from_username, member_username, kick_out_reply_msg_models=None):
+    def send_kickout(from_username, member_username, kick_out_reply_msg_models=None, msg_content=None):
         from wxbot.bot_manager import BotManager
         from models.robot import Robot
+
+        if member_username in ChatRoomMsg.username_white_list:
+            logger.info('{0} in the white list'.format(member_username))
+            return
 
         chatroom = itchat.search_chatrooms(userName=from_username)
         if chatroom is None:
@@ -121,12 +135,13 @@ class ChatRoomMsg(object):
             logger.error('member {0} not found int chatroom {1}'.format(from_username, member_username))
             return
 
-        if BotManager.robot_model.check_function(Robot.FUNCTION_TYPE_KICK_OUT):
+        if not BotManager.robot_model.check_function(Robot.FUNCTION_TYPE_KICK_OUT):
             logger.warn('robot {0} kick out closed'.format(BotManager.robot_model.Id))
             return
 
         if kick_out_reply_msg_models is None:
-            kick_out_reply_msg_models = ReplyManager.get_kickout_reply_msg_models()
+            kick_out_reply_msg_models = ReplyManager.get_kick_member_reply_msg('其他踢人消息回复')
+
         if kick_out_reply_msg_models is None and len(kick_out_reply_msg_models) == 0:
             logger.warn('kickout reply msg is None')
             return
@@ -178,7 +193,7 @@ class ChatRoomMsg(object):
 
             if chatroom and chatroom.get('IsOwner', 0):
                 ChatRoomMsg.send_chatroom_msg(ReplyManager.get_member_count_msgs(len(chatroom['MemberList'])),
-                                            from_username)
+                                              from_username)
 
         ChatRoomMsg.log(msg)
 
@@ -188,33 +203,37 @@ class ChatRoomMsg(object):
         ChatRoomMsg.log(msg)
 
     @staticmethod
-    @itchat.msg_register(content.CARD)
+    @itchat.msg_register(content.CARD, isGroupChat=True)
     def process_card(msg):
         ChatRoomMsg.log(msg)
-        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'))
+        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'),
+                                 msg_content=ChatRoomMsg.OTHER_KICK_KEYWORDS)
 
     @staticmethod
-    @itchat.msg_register(content.ATTACHMENT)
+    @itchat.msg_register(content.ATTACHMENT, isGroupChat=True)
     def process_attachment(msg):
         ChatRoomMsg.log(msg)
 
     @staticmethod
-    @itchat.msg_register(content.MAP)
+    @itchat.msg_register(content.MAP, isGroupChat=True)
     def process_map(msg):
         ChatRoomMsg.log(msg)
-        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'))
+        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'),
+                                 msg_content=ChatRoomMsg.OTHER_KICK_KEYWORDS)
 
     @staticmethod
-    @itchat.msg_register(content.RECORDING)
+    @itchat.msg_register(content.RECORDING, isGroupChat=True)
     def process_recording(msg):
         ChatRoomMsg.log(msg)
-        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'))
+        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'),
+                                 msg_content=ChatRoomMsg.OTHER_KICK_KEYWORDS)
 
     @staticmethod
-    @itchat.msg_register(content.SHARING)
+    @itchat.msg_register(content.SHARING, isGroupChat=True)
     def process_sharing(msg):
         ChatRoomMsg.log(msg)
-        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'))
+        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'),
+                                 msg_content=ChatRoomMsg.OTHER_KICK_KEYWORDS)
 
     @staticmethod
     @itchat.msg_register(content.SYSTEM)
@@ -243,12 +262,15 @@ class ChatRoomMsg(object):
             BotManager.init_message()
 
     @staticmethod
-    @itchat.msg_register(content.VIDEO)
+    @itchat.msg_register(content.VIDEO, isGroupChat=True)
     def process_video(msg):
         ChatRoomMsg.log(msg)
-        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'))
+        ChatRoomMsg.send_kickout(msg.get('FromUserName'), msg.get('ActualUserName'),
+                                 msg_content=ChatRoomMsg.OTHER_KICK_KEYWORDS)
 
-    @staticmethod
-    @itchat.msg_register(content.FRIENDS)
-    def process_friends(msg):
-        ChatRoomMsg.log(msg)
+    @classmethod
+    def update_white_list(cls, chatroom):
+        cls.username_white_list = []
+        for member in chatroom['MemberList']:
+            logger.info('add white {0} {1}'.format(member['NickName'], member['UserName']))
+            cls.username_white_list.append(member['UserName'])

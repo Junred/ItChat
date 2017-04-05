@@ -32,6 +32,9 @@ class FileHelper(object):
     START_ROBOT_FORMAT = '启动助手 助手ID 微信账号'
     STOP_ROBOT_FORMAT = '停止助手 助手ID 微信账号'
 
+    ADD_KICK_OUT_KEYWORDS = '添加踢人关键字 关键字 踢人消息回复编号(逗号分割)'
+    DEL_KICK_OUT_KEYWORDS = '删除踢人关键字 关键字'
+
     @classmethod
     def send_text_msg(cls, content):
         itchat.send_msg('>>>\n{0}'.format(content), toUserName='filehelper')
@@ -144,6 +147,16 @@ class FileHelper(object):
             cls.stop_robot(content)
             return
 
+        elif content.startswith('查看踢人关键字'):
+            cls.show_all_msg_reply(MsgReply.TYPE_KICK_KEYWORDS_REPLY)
+            return
+        elif content.startswith('添加踢人关键字'):
+            cls.add_kick_out_keywords(content)
+            return
+        elif content.startswith('删除踢人关键字'):
+            cls.del_kick_out_keywords(content)
+            return
+
         if cls.STATUS_START_ADD_MSG_LIB:
             cls.add_msg_lib(TEXT, content)
         elif cls.STATUS_START_MODIFY_MSG_LIB:
@@ -189,6 +202,9 @@ class FileHelper(object):
 
         cls.send_text_msg(msg)
         msg = ''
+        msg += '输入 "查看踢人关键字"\n显示所有踢人的关键字\n\n'
+        msg += '输入 "{0}"\n\n'.format(cls.ADD_KICK_OUT_KEYWORDS)
+        msg += '输入 "{0}"\n\n'.format(cls.DEL_KICK_OUT_KEYWORDS)
         if BotManager.robot_model.check_function(Robot.FUNCTION_TYPE_CREATE_ROBOT):
             msg += '输入 "查询助手 助手编号(可选) 助手微信账号(可选)"\n列出所有助手\n'
             msg += '输入 "添加助手 助手微信账号"\n填佳逸个新的助手\n'
@@ -253,27 +269,27 @@ class FileHelper(object):
             cls.send_text_msg('没有找到相应的群')
             return
 
-        # msg = ''
-        # update_models = []
-        # for chat_room in chat_rooms:
-        #     room_model = ChatRoom.get_model_filter(ChatRoom.WxAccount == cls.wx_account,
-        #                                            ChatRoom.UserName == chat_room['UserName'])
-        #     if room_model is None:
-        #         continue
-        #
-        #     room_model.IsManager = is_manager
-        #     update_models.append(room_model)
-        #
-        #     msg += '{0} {1} 管理成功\n'.format(chat_room['NickName'], '添加' if is_manager else '取消')
-        #
-        #     if len(update_models) % 15 == 0:
-        #         ChatRoom.save(update_models, auto_commit=True)
-        #         cls.send_text_msg(msg)
-        #         update_models = []
-        #
-        # if len(update_models) > 0:
-        #     ChatRoom.save(update_models, auto_commit=True)
-        #     cls.send_text_msg(msg)
+            # msg = ''
+            # update_models = []
+            # for chat_room in chat_rooms:
+            #     room_model = ChatRoom.get_model_filter(ChatRoom.WxAccount == cls.wx_account,
+            #                                            ChatRoom.UserName == chat_room['UserName'])
+            #     if room_model is None:
+            #         continue
+            #
+            #     room_model.IsManager = is_manager
+            #     update_models.append(room_model)
+            #
+            #     msg += '{0} {1} 管理成功\n'.format(chat_room['NickName'], '添加' if is_manager else '取消')
+            #
+            #     if len(update_models) % 15 == 0:
+            #         ChatRoom.save(update_models, auto_commit=True)
+            #         cls.send_text_msg(msg)
+            #         update_models = []
+            #
+            # if len(update_models) > 0:
+            #     ChatRoom.save(update_models, auto_commit=True)
+            #     cls.send_text_msg(msg)
 
     @classmethod
     def show_all_msg_lib(cls):
@@ -543,7 +559,7 @@ class FileHelper(object):
     def stop_robot(cls, content):
         content_arr = content.split(' ')
         if len(content_arr) != 3:
-            cls.send_text_msg('格式错误\n'.format(cls.STOP_ROBOT_FORMAT))
+            cls.send_text_msg('格式错误\n{0}'.format(cls.STOP_ROBOT_FORMAT))
             return
         _, bot_id, wx_account = content_arr
 
@@ -563,3 +579,39 @@ class FileHelper(object):
         logger.debug(ret)
 
         cls.send_text_msg('停止中\n你可以查看所有助手状态')
+
+    @classmethod
+    def add_kick_out_keywords(cls, content):
+        content_arr = content.split(' ')
+        if len(content_arr) != 3:
+            cls.send_text_msg('格式错误\n{0}'.format(cls.ADD_KICK_OUT_KEYWORDS))
+            return
+        _, keywords, msg_lib_ids = content_arr
+
+        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_lib_ids))
+        if msg_lib_models is None or len(msg_lib_ids) != len(msg_lib_models):
+            cls.send_text_msg('消息编号错误')
+            return
+
+        MsgReply.add_reply(cls.wx_account, MsgReply.TYPE_KICK_KEYWORDS_REPLY, keywords, msg_lib_ids, auto_commit=True)
+        cls.send_text_msg('添加成功')
+
+    @classmethod
+    def del_kick_out_keywords(cls, content):
+        content_arr = content.split(' ')
+        if len(content_arr) != 2:
+            cls.send_text_msg('格式错误\n{0}'.format(cls.DEL_KICK_OUT_KEYWORDS))
+            return
+
+        _, keywords = content_arr
+        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == cls.wx_account,
+                                                MsgReply.Condition == keywords,
+                                                MsgReply.Type == MsgReply.TYPE_KICK_KEYWORDS_REPLY)
+
+        if reply_model is None:
+            cls.send_text_msg(
+                '{0} [{1}] 不存在'.format(MsgReply.get_reply_type_name(MsgReply.TYPE_KICK_KEYWORDS_REPLY), keywords))
+            return
+
+        MsgReply.delete(reply_model, True)
+        cls.send_text_msg('删除成功')

@@ -15,7 +15,7 @@ class ReplyManager(object):
     keywords_reply = {}
     member_count_reply = {}
     kick_member_keywords_replay = {}
-    kick_out_reply = []
+    kick_out_reply = {}
 
     last_update_time = 0
 
@@ -36,7 +36,7 @@ class ReplyManager(object):
         cls.keywords_reply = {}
         cls.member_count_reply = {}
         cls.kick_member_keywords_replay = {}
-        cls.kick_out_reply = []
+        cls.kick_out_reply = {}
 
         for reply_model in reply_models:
             if reply_model.Type == MsgReply.TYPE_KEYWORDS_REPLY:
@@ -46,7 +46,7 @@ class ReplyManager(object):
             elif reply_model.Type == MsgReply.TYPE_KICK_KEYWORDS_REPLY:
                 cls.kick_member_keywords_replay[reply_model.Condition] = reply_model.MsgIds
             elif reply_model.Type == MsgReply.TYPE_KICKOUT_REPLY:
-                cls.kick_out_reply = reply_model.MsgIds
+                cls.kick_out_reply[reply_model.Condition] = reply_model.MsgIds
 
         cls.last_update_time = time.time()
 
@@ -95,9 +95,12 @@ class ReplyManager(object):
         return msg_models
 
     @classmethod
-    def get_kickout_reply_msg_models(cls):
+    def get_kickout_reply_msg_models(cls, text):
 
-        msg_lib_ids = cls.kick_out_reply
+        msg_lib_ids = []
+        for keywords, msg_ids in cls.kick_out_reply.items():
+            if keywords in text:
+                msg_lib_ids = msg_ids
 
         if len(msg_lib_ids) == 0:
             return []
