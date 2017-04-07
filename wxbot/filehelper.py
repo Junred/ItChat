@@ -11,6 +11,7 @@ from models.msg_reply import MsgReply
 # from models.chatroom import ChatRoom
 from models.task import Task
 from models.robot import Robot
+from models.topic import Topic
 
 logger = logging.getLogger('FileHelper')
 
@@ -26,10 +27,10 @@ class FileHelper(object):
     STATUS_START_MODIFY_MSG_LIB = False
     MSG_LIB_ID = 0
 
-    wx_account = ''
+    robot_model = None
 
-    ADD_ROBOT_FORMAT = '添加助手 微信账号(唯一) 助手昵称'
-    START_ROBOT_FORMAT = '启动助手 助手ID 微信账号'
+    ADD_ROBOT_FORMAT = '添加助手 微信账号(唯一) 助手昵称 对应主题ID'
+    START_ROBOT_FORMAT = '启动助手 助手ID 微信账号 主题ID'
     STOP_ROBOT_FORMAT = '停止助手 助手ID 微信账号'
 
     ADD_KICK_OUT_KEYWORDS = '添加踢人关键字 关键字 踢人消息回复编号(逗号分割)'
@@ -146,6 +147,9 @@ class FileHelper(object):
         elif content.startswith('停止助手'):
             cls.stop_robot(content)
             return
+        elif content.startswith('查看主题'):
+            cls.get_topics()
+            return
 
         elif content.startswith('查看踢人关键字'):
             cls.show_all_msg_reply(MsgReply.TYPE_KICK_KEYWORDS_REPLY)
@@ -185,6 +189,7 @@ class FileHelper(object):
         msg += '输入 "结束添加消息"\n添加消息结束\n\n'
         msg += '输入 "开始修改消息 消息编号"\n后面输入的消息会修改这个编号\n'
         msg += '输入 "结束修改消息"\n\n'
+        msg += '输入 "查看主题"\n显示所属用户的所有主题\n\n'
         cls.send_text_msg(msg)
 
         msg = ''
@@ -294,7 +299,7 @@ class FileHelper(object):
     @classmethod
     def show_all_msg_lib(cls):
 
-        msg_models = Msg.get_models_filter_by(WxAccount=cls.wx_account)
+        msg_models = Msg.get_models_filter_by(TopicId=cls.robot_model.TopicId)
         if msg_models is None or len(msg_models) == 0:
             cls.send_text_msg('抱歉，你的消息库为空')
             return None
@@ -318,7 +323,7 @@ class FileHelper(object):
     @classmethod
     def add_msg_lib(cls, content_type, content):
         tips = '失败'
-        if Msg.add_msg(cls.wx_account, content_type, content, auto_commit=True):
+        if Msg.add_msg(cls.robot_model.TopicId, content_type, content, auto_commit=True):
             tips = '成功'
 
         cls.send_text_msg('添加{0}'.format(tips))
@@ -326,7 +331,7 @@ class FileHelper(object):
     @classmethod
     def show_all_msg_reply(cls, reply_type):
 
-        reply_models = MsgReply.get_models_filter_by(WxAccount=cls.wx_account, Type=reply_type)
+        reply_models = MsgReply.get_models_filter_by(TopicId=cls.robot_model.TopicId, Type=reply_type)
         if reply_models is None or len(reply_models) == 0:
             cls.send_text_msg('你还没有{0}回复'.format(MsgReply.get_reply_type_name(reply_type)))
             return None
@@ -346,7 +351,7 @@ class FileHelper(object):
     @classmethod
     def modify_msg_lib(cls, content_type, content):
 
-        msg_model = Msg.get_model_filter(Msg.WxAccount == cls.wx_account, Msg.Id == cls.MSG_LIB_ID)
+        msg_model = Msg.get_model_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id == cls.MSG_LIB_ID)
         if msg_model is None:
             cls.send_text_msg('消息编号 [{0}] 不存在'.format(cls.MSG_LIB_ID))
             return
@@ -366,7 +371,7 @@ class FileHelper(object):
             return
         keyword, msg_number = content_arr[1], content_arr[2]
 
-        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == cls.wx_account,
+        reply_model = MsgReply.get_model_filter(MsgReply.TopicId == cls.robot_model.TopicId,
                                                 MsgReply.Condition == keyword,
                                                 MsgReply.Type == reply_type)
         if reply_model:
@@ -378,13 +383,13 @@ class FileHelper(object):
             cls.send_text_msg('请输入消息编号')
             return
 
-        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_numbers))
+        msg_lib_models = Msg.get_models_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id.in_(msg_numbers))
         if msg_lib_models is None or len(msg_numbers) != len(msg_lib_models):
             cls.send_text_msg('消息编号错误')
             return
 
         tips = '失败'
-        if MsgReply.add_reply(cls.wx_account, reply_type, keyword, msg_numbers, auto_commit=True):
+        if MsgReply.add_reply(cls.robot_model.TopicId, reply_type, keyword, msg_numbers, auto_commit=True):
             tips = '成功'
         cls.send_text_msg('添加{0}消息回复策略-{1}'.format(reply_type_name, tips))
 
@@ -398,7 +403,7 @@ class FileHelper(object):
             return
 
         keywords = content_arr[1]
-        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == cls.wx_account,
+        reply_model = MsgReply.get_model_filter(MsgReply.TopicId == cls.robot_model.TopicId,
                                                 MsgReply.Condition == keywords,
                                                 MsgReply.Type == reply_type)
         if reply_model is None:
@@ -419,7 +424,7 @@ class FileHelper(object):
             return
         keyword, msg_number = content_arr[1], content_arr[2]
 
-        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == cls.wx_account,
+        reply_model = MsgReply.get_model_filter(MsgReply.TopicId == cls.robot_model.TopicId,
                                                 MsgReply.Condition == keyword,
                                                 MsgReply.Type == reply_type)
         if reply_model is None:
@@ -431,7 +436,7 @@ class FileHelper(object):
             cls.send_text_msg('请输入消息编号')
             return
 
-        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_numbers))
+        msg_lib_models = Msg.get_models_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id.in_(msg_numbers))
         if msg_lib_models is None or len(msg_numbers) != len(msg_lib_models):
             cls.send_text_msg('消息编号错误')
             return
@@ -470,7 +475,7 @@ class FileHelper(object):
 
                 # need to send
                 now += datetime.timedelta(seconds=6)
-                model = Task.add_task(cls.wx_account, Task.TASK_TYPE_SEND_MSG, content_arr[3], username, now)
+                model = Task.add_task(cls.robot_model.WxAccount, Task.TASK_TYPE_SEND_MSG, content_arr[3], username, now)
                 if model:
                     update_models.append(model)
 
@@ -501,8 +506,8 @@ class FileHelper(object):
         msg = ''
         n = 0
         for robot_model in robot_models:
-            txt = '{0} {1} {2} {3}\n'.format(robot_model.Id, robot_model.WxAccount, robot_model.NickName,
-                                             robot_model.get_status_name())
+            txt = '{0} {1} {2} {3} {4}\n'.format(robot_model.Id, robot_model.WxAccount, robot_model.TopicId,
+                                                 robot_model.NickName, robot_model.get_status_name())
             if robot_model.Id == bot_id and robot_model.WxAccount == wx_account and robot_model.LoginQrUrl and robot_model.is_wait_scan():
                 logger.debug('wait scan: {0}'.format(robot_model.LoginQrUrl))
                 cls.send_text_msg(txt)
@@ -521,13 +526,13 @@ class FileHelper(object):
     @classmethod
     def add_robot(cls, content):
         # 添加助手 微信账号(唯一) 助手昵称
-        from .bot_manager import BotManager
         content_arr = content.split(' ')
-        if len(content_arr) != 3:
+        if len(content_arr) != 4:
             cls.send_text_msg('格式错误\n{0}'.format(cls.ADD_ROBOT_FORMAT))
             return
 
-        Robot.add_robot(content_arr[1], BotManager.get_robot_model().UserId, content_arr[2], [2, 3, 4],
+        wx_account, nickname, topic_id = content_arr[1:]
+        Robot.add_robot(wx_account, cls.robot_model.UserId, topic_id, nickname, [2, 3, 4],
                         auto_commit=True)
         cls.send_text_msg('添加成功\n')
 
@@ -536,11 +541,12 @@ class FileHelper(object):
         # 启动助手 助手ID 微信账号
         from wxbot.bot_manager import BotManager
         content_arr = content.split(' ')
-        if len(content_arr) != 3:
+        if len(content_arr) != 4:
             cls.send_text_msg('格式错误\n{0}'.format(cls.START_ROBOT_FORMAT))
             return
         bot_id = content_arr[1]
         wx_account = content_arr[2]
+        topic_id = content_arr[3]
 
         robot_model = Robot.get_model_filter(Robot.Id == bot_id, Robot.WxAccount == wx_account)
         if robot_model is None:
@@ -548,7 +554,7 @@ class FileHelper(object):
             return
 
         python_path = '{0}/venv/bin/python'.format(BotManager.root_path)
-        py_path = '{0}/wx_bot.py {1} {2}'.format(BotManager.root_path, bot_id, wx_account)
+        py_path = '{0}/wx_bot.py {1} {2} {3}'.format(BotManager.root_path, bot_id, wx_account, topic_id)
         ret = os.system('{0} {1} &'.format(python_path, py_path))
 
         logger.debug(ret)
@@ -581,6 +587,23 @@ class FileHelper(object):
         cls.send_text_msg('停止中\n你可以查看所有助手状态')
 
     @classmethod
+    def get_topics(cls):
+        topic_models = Topic.get_models_filter(Topic.UserId==cls.robot_model.UserId)
+
+        msg = ''
+        n = 0
+        for topic_model in topic_models:
+            n += 1
+            msg += '{0} {1}\n'.format(topic_model.Id, topic_model.TopicName)
+
+            if n % 15 == 0:
+                cls.send_text_msg(msg)
+                msg = ''
+
+        if len(msg) > 0:
+            cls.send_text_msg(msg)
+
+    @classmethod
     def add_kick_out_keywords(cls, content):
         content_arr = content.split(' ')
         if len(content_arr) != 3:
@@ -588,12 +611,12 @@ class FileHelper(object):
             return
         _, keywords, msg_lib_ids = content_arr
 
-        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_lib_ids))
+        msg_lib_models = Msg.get_models_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id.in_(msg_lib_ids))
         if msg_lib_models is None or len(msg_lib_ids) != len(msg_lib_models):
             cls.send_text_msg('消息编号错误')
             return
 
-        MsgReply.add_reply(cls.wx_account, MsgReply.TYPE_KICK_KEYWORDS_REPLY, keywords, msg_lib_ids, auto_commit=True)
+        MsgReply.add_reply(cls.robot_model.TopicId, MsgReply.TYPE_KICK_KEYWORDS_REPLY, keywords, msg_lib_ids, auto_commit=True)
         cls.send_text_msg('添加成功')
 
     @classmethod
@@ -604,7 +627,7 @@ class FileHelper(object):
             return
 
         _, keywords = content_arr
-        reply_model = MsgReply.get_model_filter(MsgReply.WxAccount == cls.wx_account,
+        reply_model = MsgReply.get_model_filter(MsgReply.TopicId == cls.robot_model.TopicId,
                                                 MsgReply.Condition == keywords,
                                                 MsgReply.Type == MsgReply.TYPE_KICK_KEYWORDS_REPLY)
 

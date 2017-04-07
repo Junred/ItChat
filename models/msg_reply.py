@@ -12,7 +12,7 @@ class MsgReply(BaseModel):
     TYPE_CHAT_ROOM_COUNT_REPLY = 2
     TYPE_KICK_KEYWORDS_REPLY = 3
 
-    WxAccount = Column('WxAccount', String(64), index=True)
+    TopicId = Column('TopicId', Integer, index=True)
     Type = Column('Type', Integer, nullable=False)
     Condition = Column('Condition', String(128), nullable=False, index=True)
     _MsgIds = Column('MsgIds', String(256), nullable=False)
@@ -41,8 +41,8 @@ class MsgReply(BaseModel):
         return 'unknown'
 
     @classmethod
-    def add_reply(cls, wx_account, reply_type, condition, msg_ids, auto_commit=False):
-        msg_reply_model = cls(WxAccount=wx_account, Type=reply_type, Condition=condition, MsgIds=msg_ids)
+    def add_reply(cls, topic_id, reply_type, condition, msg_ids, auto_commit=False):
+        msg_reply_model = cls(TopicId=topic_id, Type=reply_type, Condition=condition, MsgIds=msg_ids)
         if auto_commit:
             cls.add(msg_reply_model)
             cls.commit()

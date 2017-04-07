@@ -34,10 +34,12 @@ class Robot(BaseModel):
     FUNCTION_TYPE_GROUP_SEND = 4
     FUNCTION_TYPE_STATISTICS = 5
     FUNCTION_TYPE_CHAT_ROBOT = 6
+    FUNCTION_TYPE_CREATE_TOPIC = 7
 
-    WxAccount = Column('WxAccount', String(64), nullable=False, unique=True)
     # 同一个用户下可见
     UserId = Column('UserId', Integer, index=True)
+    WxAccount = Column('WxAccount', String(64), index=True)
+    TopicId = Column('TopicId', Integer, nullable=False)
     NickName = Column('NickName', String(64), nullable=False)
     LoginQrUrl = Column('LoginQrUrl', String(256), nullable=True)
     _RobotFunctions = Column('RobotFunctions', String(128), nullable=False)
@@ -54,8 +56,8 @@ class Robot(BaseModel):
         self._RobotFunctions = ','.join(map(str, values))
 
     @classmethod
-    def add_robot(cls, wx_account, user_id, nickname, robot_functions, auto_commit=False):
-        robot = cls(WxAccount=wx_account, UserId=user_id, NickName=nickname, RobotFunctions=robot_functions)
+    def add_robot(cls, wx_account, user_id, topic_id, nickname, robot_functions, auto_commit=False):
+        robot = cls(WxAccount=wx_account, TopicId=topic_id, UserId=user_id, NickName=nickname, RobotFunctions=robot_functions)
         if robot and auto_commit:
             cls.save([robot])
         return robot

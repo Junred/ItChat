@@ -10,7 +10,7 @@ logger = logging.getLogger('GroupMsg')
 
 class FriendMsg(object):
 
-    wx_account = ''
+    robot_model = None
 
     @staticmethod
     def log(msg):

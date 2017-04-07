@@ -84,4 +84,4 @@ class BaseModel(_base):
         if auto_commit:
             db.session.commit()
 
-from . import chatroom, msg_lib, robot, task, user, msg_reply
+from . import chatroom, msg_lib, robot, task, user, msg_reply, topic

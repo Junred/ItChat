@@ -30,12 +30,11 @@ class BotManager(object):
         cls.robot_model = robot_model
         cls.qr_storage_file = storage_file
         cls.root_path = root_path
-        TaskManner.wx_account = robot_model.WxAccount
-        ChatRoomMsg.wx_account = robot_model.WxAccount
-        FileHelper.wx_account = robot_model.WxAccount
-        TaskManner.wx_account = robot_model.WxAccount
-        ReplyManager.wx_account = robot_model.WxAccount
-        FriendMsg.wx_account = robot_model.WxAccount
+        TaskManner.robot_model = robot_model
+        ChatRoomMsg.robot_model = robot_model
+        FileHelper.robot_model = robot_model
+        ReplyManager.robot_model = robot_model
+        FriendMsg.robot_model = robot_model
 
     @classmethod
     def get_robot_wx_account(cls):
@@ -108,7 +107,7 @@ class BotManager(object):
     def schedule(bot):
         # 更新机器人状态
         logger.debug('schedule ... ')
-        TaskManner.process(BotManager.get_robot_wx_account())
+        TaskManner.process()
         ReplyManager.refresh_settings()
 
         BotManager.update_robot_model()

@@ -12,7 +12,7 @@ logger = logging.getLogger('GroupMsg')
 
 
 class ChatRoomMsg(object):
-    wx_account = ''
+    robot_model = None
 
     username_white_list = []
 

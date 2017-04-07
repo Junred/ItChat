@@ -11,6 +11,7 @@ logger = logging.getLogger('ReplyManager')
 class ReplyManager(object):
 
     wx_account = ''
+    robot_model = None
 
     keywords_reply = {}
     member_count_reply = {}
@@ -27,9 +28,9 @@ class ReplyManager(object):
         if now - cls.last_update_time < cls.UPDATE_SETTING_INTERVAL:
             return
 
-        reply_models = MsgReply.get_models_filter(MsgReply.WxAccount == cls.wx_account)
+        reply_models = MsgReply.get_models_filter(MsgReply.TopicId == cls.robot_model.TopicId)
         if reply_models is None:
-            logger.warn('{0} not setting replay config'.format(cls.wx_account))
+            logger.warn('{0} not setting replay config'.format(cls.robot_model.TopicId))
             return
 
         logger.debug('refresh reply settings')
@@ -61,7 +62,7 @@ class ReplyManager(object):
         if len(msg_lib_ids) == 0:
             return []
 
-        msg_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_lib_ids))
+        msg_models = Msg.get_models_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id.in_(msg_lib_ids))
         if msg_models is None:
             return []
         return msg_models
@@ -72,7 +73,7 @@ class ReplyManager(object):
         if len(msg_lib_ids) == 0:
             return
 
-        msg_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_lib_ids))
+        msg_models = Msg.get_models_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id.in_(msg_lib_ids))
         if msg_models is None:
             return []
         return msg_models
@@ -88,7 +89,7 @@ class ReplyManager(object):
         if len(msg_lib_ids) == 0:
             return []
 
-        msg_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_lib_ids))
+        msg_models = Msg.get_models_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id.in_(msg_lib_ids))
         if msg_models is None:
             return []
 
@@ -105,7 +106,7 @@ class ReplyManager(object):
         if len(msg_lib_ids) == 0:
             return []
 
-        msg_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_lib_ids))
+        msg_models = Msg.get_models_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id.in_(msg_lib_ids))
         if msg_models is None:
             return []
 

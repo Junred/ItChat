@@ -14,13 +14,11 @@ class TaskManner(object):
 
     COUNT_PER_ONCE = 10
 
-    wx_account = ''
+    robot_model = None
 
     @classmethod
-    def process(cls, wx_account):
-        cls.wx_account = wx_account
-
-        task_model = Task.get_task(wx_account)
+    def process(cls):
+        task_model = Task.get_task(cls.robot_model.WxAccount)
         if task_model is None:
             return
 
@@ -46,7 +44,7 @@ class TaskManner(object):
 
         logger.debug(msg_ids)
 
-        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.wx_account, Msg.Id.in_(msg_ids))
+        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.robot_model.WxAccount, Msg.Id.in_(msg_ids))
         if msg_lib_models is None or len(msg_lib_models) == 0:
             logger.warn('msg not found in db: {0}'.format(content))
             return
