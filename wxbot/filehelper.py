@@ -450,7 +450,7 @@ class FileHelper(object):
         # '我要群发 群主/成员 群名关键字 消息编号(多个用逗号分割)"\n群主:表示只发自己是群主的群，成员:表示只要自己在群内'
         content_arr = content.split(' ')
         if len(content_arr) != 4:
-            cls.send_text_msg('消息格式不正确\n我要群发 群主/成员 群名关键字 消息编号(多个用逗号分割)"\n群主:表示只发自己是群主的群，成员:表示只要自己在群内')
+            cls.send_text_msg('消息格式不正确\n我要群发 群主/成员 群名关键字 消息编号(多个用逗号分割) 间隔秒数"\n群主:表示只发自己是群主的群，成员:表示只要自己在群内')
             return
 
         # room_models = ChatRoom.get_models_filter(ChatRoom.WxAccount == cls.wx_account, ChatRoom.IsManager == True)
@@ -459,6 +459,9 @@ class FileHelper(object):
         # if room_models:
         #     for room_model in room_models:
         #         room_model_map[room_model.UserName] = room_model
+        interval = 10
+        if len(content_arr) > 4:
+            interval = int(content_arr[4])
 
         now = datetime.datetime.now()
         check_is_owner = True if content_arr[1] == '群主' else False
@@ -474,7 +477,7 @@ class FileHelper(object):
                 #     continue
 
                 # need to send
-                now += datetime.timedelta(seconds=6)
+                now += datetime.timedelta(seconds=interval)
                 model = Task.add_task(cls.robot_model.WxAccount, Task.TASK_TYPE_SEND_MSG, content_arr[3], username, now)
                 if model:
                     update_models.append(model)

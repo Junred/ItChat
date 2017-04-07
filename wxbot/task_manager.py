@@ -44,7 +44,7 @@ class TaskManner(object):
 
         logger.debug(msg_ids)
 
-        msg_lib_models = Msg.get_models_filter(Msg.WxAccount == cls.robot_model.WxAccount, Msg.Id.in_(msg_ids))
+        msg_lib_models = Msg.get_models_filter(Msg.TopicId == cls.robot_model.TopicId, Msg.Id.in_(msg_ids))
         if msg_lib_models is None or len(msg_lib_models) == 0:
             logger.warn('msg not found in db: {0}'.format(content))
             return
